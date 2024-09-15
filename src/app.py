@@ -2,6 +2,7 @@ import os
 import sys
 
 import streamlit as st
+import openai
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from src.data_fetcher import EBirdDataFetcher
@@ -13,59 +14,76 @@ from src.constants import REGION_CODES
 
 REGION_DICT = dict(REGION_CODES)
 
-st.set_page_config(layout="wide")
-st.title("EBird API Dashboard")
+st.set_page_config(
+    page_title="eBird API Dashboard",
+    page_icon="🐦",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
-col1, col2, col3 = st.columns(3)
+st.title("eBird API Dashboard")
 
-with col1:
-    api_key = st.text_input(label="Enter EBird API Key:")
+api_col, openai_col, _ = st.columns(3)
 
-if api_key:
-    fetcher = EBirdDataFetcher(api_key=api_key)
+with api_col:
+    ebird_api_key = st.text_input(label="Enter EBird API Key:")
+
+with openai_col:
+    openai_api_key = st.text_input(
+        label="Enter OpenAI API Key:", type="password"
+    )
+
+if ebird_api_key and openai_api_key:
+    fetcher = EBirdDataFetcher(api_key=ebird_api_key)
     processor = EBirdDataProcessor()
     visualizer = EBirdVisualizer()
-    formatter = TextFormatter()
+    formatter = TextFormatter(openai_api_key=openai_api_key)
 
     tab1, tab2, tab3 = st.tabs(["Recent Observations", "Tab 2", "Tab 3"])
 
     with tab1:
-        col1, col2, col3 = st.columns(3)
+        region_col, _, _ = st.columns(3)
 
-        with col1:
+        with region_col:
             selected_region = st.selectbox(
                 "Select a Region",
                 options=[code for code, _ in REGION_CODES],
                 format_func=lambda x: f"{REGION_DICT[x]}",
             )
-            button = st.button("Fetch and Analyze Data")
+            fetch_data = st.button("Fetch and Analyze Data")
 
-        col1, col2 = st.columns(2)
+        if fetch_data:
+            with st.spinner("Fetching recent observations..."):
+                observations = fetcher.get_recent_observations(
+                    region_code=selected_region
+                )
 
-        with col1:
-            if button:
-                with st.spinner("Fetching recent observations..."):
-                    observations = fetcher.get_recent_observations(
-                        region_code=selected_region
-                    )
+                if observations:
                     df = processor.process_observations(
                         observations=observations
                     )
-                    top_ten_df = processor.top_ten_species(df=df)
-
+                    top_ten = processor.top_ten_species(df=df)
                     top_ten_plot = visualizer.plot_recent_observations(
-                        df=top_ten_df,
+                        df=top_ten
                     )
+
                     st.header(
-                        "Recent Observations in"
-                        f" {REGION_DICT[selected_region]}"
+                        f"Recent Observations in {REGION_DICT[selected_region]}"
                     )
                     st.pyplot(top_ten_plot)
 
-        with col2:
-            if button:
-                st.header("Species Descriptions")
-                formatter.format_species_description(top_ten_df)
+                    st.header("Species Descriptions")
+                    species_list = top_ten.index.to_list()
+                    descriptions = formatter.get_species_descriptions(
+                        species_list=species_list
+                    )
+
+                    for species in species_list:
+                        with st.expander(species):
+                            st.write(descriptions[species])
+
+                else:
+                    st.error("No observations found for the selected region.")
 
 else:
     st.warning("Please enter your EBird API key to continue")
