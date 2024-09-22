@@ -1,13 +1,7 @@
-import sys
-
-print(sys.executable)
-
 from unittest import TestCase, main
-from unittest.mock import patch, MagicMock
 
 from src.text_formatter import TextFormatter
 
-import openai
 import openai_responses
 
 

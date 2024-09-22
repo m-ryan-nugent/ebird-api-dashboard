@@ -1,10 +1,10 @@
 import streamlit as st
 
-from data_fetcher import EBirdDataFetcher
-from data_processor import EBirdDataProcessor
-from visualizer import EBirdVisualizer
-from text_formatter import TextFormatter
-from constants import REGION_CODES
+from src.data_fetcher import EBirdDataFetcher
+from src.data_processor import EBirdDataProcessor
+from src.visualizer import EBirdVisualizer
+from src.text_formatter import TextFormatter
+from src.constants import REGION_CODES
 
 
 REGION_DICT = dict(REGION_CODES)
