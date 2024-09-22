@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 
+from src.app import main
 from src.data_fetcher import EBirdDataFetcher
 from src.data_processor import EBirdDataProcessor
 from src.visualizer import EBirdVisualizer
@@ -26,7 +27,6 @@ class TestApp(unittest.TestCase):
         mock_selectbox,
         mock_text_input,
     ):
-        # Mock user inputs
         mock_text_input.side_effect = [
             "fake_ebird_api_key",
             "fake_openai_api_key",
@@ -35,7 +35,6 @@ class TestApp(unittest.TestCase):
         mock_button.return_value = True
         mock_expander.return_value.__enter__.return_value = MagicMock()
 
-        # Mock the data fetcher
         with patch.object(
             EBirdDataFetcher, "get_recent_observations"
         ) as mock_get_observations:
@@ -44,19 +43,16 @@ class TestApp(unittest.TestCase):
                 {"comName": "Blue Jay", "howMany": 3},
             ]
 
-            # Mock the data processor
             with patch.object(
                 EBirdDataProcessor, "process_observations"
             ) as mock_process:
                 mock_process.return_value = MagicMock()
 
-                # Mock the visualizer
                 with patch.object(
                     EBirdVisualizer, "plot_recent_observations"
                 ) as mock_plot:
                     mock_plot.return_value = MagicMock()
 
-                    # Mock the text formatter
                     with patch.object(
                         TextFormatter, "get_species_descriptions"
                     ) as mock_descriptions:
@@ -65,10 +61,8 @@ class TestApp(unittest.TestCase):
                             "Blue Jay": "A colorful bird known for its intelligence.",
                         }
 
-                        # Import and run the app
-                        import src.app  # noqa
+                        main()
 
-        # Assert that the mocked functions were called
         mock_get_observations.assert_called_once_with(region_code="US-NY")
         mock_process.assert_called_once()
         mock_plot.assert_called_once()
