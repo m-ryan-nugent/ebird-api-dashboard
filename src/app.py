@@ -16,65 +16,73 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-st.title("eBird API Dashboard")
 
-api_col, openai_col, _ = st.columns(3)
+def main():
+    st.title("eBird API Dashboard")
 
-with api_col:
-    ebird_api_key = st.text_input(label="Enter EBird API Key:")
+    api_col, openai_col, _ = st.columns(3)
 
-with openai_col:
-    openai_api_key = st.text_input(
-        label="Enter OpenAI API Key:", type="password"
-    )
+    with api_col:
+        ebird_api_key = st.text_input(label="Enter EBird API Key:")
 
-if ebird_api_key and openai_api_key:
-    fetcher = EBirdDataFetcher(api_key=ebird_api_key)
-    processor = EBirdDataProcessor()
-    visualizer = EBirdVisualizer()
-    formatter = TextFormatter(openai_api_key=openai_api_key)
-
-    region_col, _, _ = st.columns(3)
-
-    with region_col:
-        selected_region = st.selectbox(
-            "Select a Region",
-            options=[code for code, _ in REGION_CODES],
-            format_func=lambda x: f"{REGION_DICT[x]}",
+    with openai_col:
+        openai_api_key = st.text_input(
+            label="Enter OpenAI API Key:", type="password"
         )
-        fetch_data = st.button("Fetch and Analyze Data")
 
-    if fetch_data:
-        with st.spinner("Fetching recent observations..."):
-            try:
-                observations = fetcher.get_recent_observations(
-                    region_code=selected_region
+    if ebird_api_key and openai_api_key:
+        fetcher = EBirdDataFetcher(api_key=ebird_api_key)
+        processor = EBirdDataProcessor()
+        visualizer = EBirdVisualizer()
+        formatter = TextFormatter(openai_api_key=openai_api_key)
+
+        region_col, _, _ = st.columns(3)
+
+        with region_col:
+            selected_region = st.selectbox(
+                "Select a Region",
+                options=[code for code, _ in REGION_CODES],
+                format_func=lambda x: f"{REGION_DICT[x]}",
+            )
+            fetch_data = st.button("Fetch and Analyze Data")
+
+        if fetch_data:
+            with st.spinner("Fetching recent observations..."):
+                try:
+                    observations = fetcher.get_recent_observations(
+                        region_code=selected_region
+                    )
+                except Exception as e:
+                    st.error(f"Error getting observations: {e}")
+                    st.stop()
+
+                df = processor.process_observations(observations=observations)
+                top_ten = processor.top_ten_species(df=df)
+                top_ten_plot = visualizer.plot_recent_observations(df=top_ten)
+
+                st.header(
+                    f"Recent Observations in {REGION_DICT[selected_region]}"
                 )
-            except Exception as e:
-                st.error(f"Error getting observations: {e}")
-                st.stop()
+                st.pyplot(top_ten_plot)
 
-            df = processor.process_observations(observations=observations)
-            top_ten = processor.top_ten_species(df=df)
-            top_ten_plot = visualizer.plot_recent_observations(df=top_ten)
+                st.header("Species Descriptions")
+                species_list = top_ten.index.to_list()
 
-            st.header(f"Recent Observations in {REGION_DICT[selected_region]}")
-            st.pyplot(top_ten_plot)
+                try:
+                    descriptions = formatter.get_species_descriptions(
+                        species_list=species_list
+                    )
+                except Exception as e:
+                    print(f"Error getting species descriptions: {e}")
+                    descriptions = None
 
-            st.header("Species Descriptions")
-            species_list = top_ten.index.to_list()
+                if descriptions:
+                    for species in species_list:
+                        with st.expander(species):
+                            st.write(descriptions[species])
+                else:
+                    st.warning("Species descriptions could not be processed.")
 
-            try:
-                descriptions = formatter.get_species_descriptions(
-                    species_list=species_list
-                )
-            except Exception as e:
-                print(f"Error getting species descriptions: {e}")
-                descriptions = None
 
-            if descriptions:
-                for species in species_list:
-                    with st.expander(species):
-                        st.write(descriptions[species])
-            else:
-                st.warning("Species descriptions could not be processed.")
+if __name__ == "__main__":
+    main()
